@@ -4,6 +4,8 @@ import (
 	"os"
 	"sort"
 	"testing"
+
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func stringSlicesEqual(a, b []string) bool {
@@ -248,5 +250,17 @@ func TestResourceExceptionWithRegexPrefixInNamespace(t *testing.T) {
 	}
 	if !exceptionFound {
 		t.Error("Expected to find exception")
+	}
+}
+
+func TestGetResourceKinds(t *testing.T) {
+	clientset := fake.NewClientset()
+
+	kinds, err := GetResourceKinds(clientset)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(kinds) != 0 {
+		t.Errorf("Expected no resource kinds, got %v", kinds)
 	}
 }

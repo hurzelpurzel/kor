@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -187,5 +188,133 @@ func TestFlagDynamicResource(t *testing.T) {
 				t.Errorf("Resource Lost his labels")
 			}
 		})
+	}
+}
+
+func TestDeleteResourceCmd(t *testing.T) {
+	deleteMap := DeleteResourceCmd()
+	if deleteMap == nil {
+		t.Fatal("DeleteResourceCmd returned nil map")
+	}
+
+	expectedKeys := []string{
+		"ConfigMap", "Secret", "Service", "Deployment", "HPA", "Ingress", "PDB",
+		"Role", "ClusterRole", "ClusterRoleBinding", "PVC", "StatefulSet",
+		"ServiceAccount", "PV", "Pod", "Job", "ReplicaSet", "DaemonSet",
+		"StorageClass", "NetworkPolicy", "RoleBinding", "VolumeAttachment",
+		"PriorityClass",
+	}
+	for _, key := range expectedKeys {
+		if _, exists := deleteMap[key]; !exists {
+			t.Errorf("Expected delete function for %s", key)
+		}
+	}
+
+	clientset := fake.NewClientset()
+	_, err := clientset.CoreV1().ConfigMaps(testNamespace).Create(context.TODO(), CreateTestConfigmap(testNamespace, "configmap-1", AppLabels), metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error creating fake configmap: %v", err)
+	}
+
+	if err := deleteMap["ConfigMap"](clientset, testNamespace, "configmap-1"); err != nil {
+		t.Errorf("Expected no error deleting configmap, got %v", err)
+	}
+
+	_, err = clientset.CoreV1().ConfigMaps(testNamespace).Get(context.TODO(), "configmap-1", metav1.GetOptions{})
+	if err == nil {
+		t.Error("Expected configmap to be deleted")
+	}
+}
+
+func TestDeleteResourceUnsupportedType(t *testing.T) {
+	clientset := fake.NewClientset()
+
+	diff := []ResourceInfo{{Name: "test-resource"}}
+	deletedDiff, err := DeleteResource(diff, clientset, testNamespace, "UnsupportedType", true)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(deletedDiff) != 0 {
+		t.Errorf("Expected no resources deleted, got %v", deletedDiff)
+	}
+}
+
+func TestGetResource(t *testing.T) {
+	clientset := fake.NewClientset()
+	_, err := clientset.CoreV1().ConfigMaps(testNamespace).Create(context.TODO(), CreateTestConfigmap(testNamespace, "configmap-1", AppLabels), metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error creating fake configmap: %v", err)
+	}
+
+	resource, err := getResource(clientset, testNamespace, "ConfigMap", "configmap-1")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if _, ok := resource.(*corev1.ConfigMap); !ok {
+		t.Errorf("Expected *corev1.ConfigMap, got %T", resource)
+	}
+
+	_, err = getResource(clientset, testNamespace, "UnsupportedType", "configmap-1")
+	if err == nil {
+		t.Error("Expected error for unsupported resource type")
+	}
+
+	_, err = getResource(clientset, testNamespace, "ConfigMap", "missing")
+	if err == nil {
+		t.Error("Expected error for missing resource")
+	}
+}
+
+func TestFlagResource(t *testing.T) {
+	clientset := fake.NewClientset()
+	_, err := clientset.CoreV1().ConfigMaps(testNamespace).Create(context.TODO(), CreateTestConfigmap(testNamespace, "configmap-1", AppLabels), metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error creating fake configmap: %v", err)
+	}
+
+	err = FlagResource(clientset, testNamespace, "ConfigMap", "configmap-1")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	cm, err := clientset.CoreV1().ConfigMaps(testNamespace).Get(context.TODO(), "configmap-1", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting configmap: %v", err)
+	}
+	if cm.Labels["kor/used"] != "true" {
+		t.Errorf("Expected configmap flagged as used, got labels %v", cm.Labels)
+	}
+
+	err = FlagResource(clientset, testNamespace, "UnsupportedType", "configmap-1")
+	if err == nil {
+		t.Error("Expected error for unsupported resource type")
+	}
+}
+
+func TestUpdateResource(t *testing.T) {
+	clientset := fake.NewClientset()
+	_, err := clientset.CoreV1().ConfigMaps(testNamespace).Create(context.TODO(), CreateTestConfigmap(testNamespace, "configmap-1", AppLabels), metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error creating fake configmap: %v", err)
+	}
+
+	resource, err := getResource(clientset, testNamespace, "ConfigMap", "configmap-1")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	cm := resource.(*corev1.ConfigMap)
+	cm.Data = map[string]string{"updated": "true"}
+
+	updated, err := updateResource(clientset, testNamespace, "ConfigMap", cm)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if updatedData := updated.(*corev1.ConfigMap).Data["updated"]; updatedData != "true" {
+		t.Errorf("Expected updated data, got %v", updatedData)
+	}
+
+	_, err = updateResource(clientset, testNamespace, "UnsupportedType", cm)
+	if err == nil {
+		t.Error("Expected error for unsupported resource type")
 	}
 }
