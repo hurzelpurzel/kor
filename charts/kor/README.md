@@ -17,6 +17,22 @@ A Kubernetes Helm Chart to discover orphaned resources using kor
 | additionalLabels | object | `{}` | Custom labels to add into metadata |
 | cronJob.args[0] | string | `"all"` |  |
 | cronJob.command[0] | string | `"kor"` |  |
+| cronJob.config.clusterName | string | `""` | Cluster name shown in CLI output and Slack notifications |
+| cronJob.config.delete | bool | `false` | Delete unused resources |
+| cronJob.config.excludeLabels | list | `[]` | Selector to filter out, Example: --exclude-labels key1=value1,key2=value2 |
+| cronJob.config.excludeNamespaces | list | `[]` | Namespaces to be excluded, Example: --exclude-namespaces ns1,ns2,ns3 |
+| cronJob.config.groupBy | string | `"namespace"` | Group output by (namespace, resource) |
+| cronJob.config.ignoreOwnerReferences | bool | `false` | Skip resources that have ownerReferences set (for all resource types) |
+| cronJob.config.includeLabels | string | `""` | Selector to filter in, Example: --include-labels key1=value1 |
+| cronJob.config.includeNamespaces | list | `[]` | Namespaces to run on, Example: --include-namespaces ns1,ns2,ns3 |
+| cronJob.config.kubeconfig | string | `""` | Path to kubeconfig file (optional) |
+| cronJob.config.namespaced | string | `nil` | Set true/false to explicitly return namespaced/non-namespaced resources. If unset (null), both are returned |
+| cronJob.config.newerThan | string | `""` | The maximum age of the resources to be considered unused. Example: --newer-than=1h2m |
+| cronJob.config.noInteractive | bool | `false` | Do not prompt for confirmation when deleting resources |
+| cronJob.config.olderThan | string | `""` | The minimum age of the resources to be considered unused. Example: --older-than=1h2m |
+| cronJob.config.output | string | `"table"` | Output format (table, json or yaml) |
+| cronJob.config.showReason | bool | `false` | Print reason resource is considered unused |
+| cronJob.config.verbose | bool | `false` | Verbose output (print empty namespaces) |
 | cronJob.enabled | bool | `false` |  |
 | cronJob.failedJobsHistoryLimit | int | `2` |  |
 | cronJob.image.repository | string | `"yonahdissen/kor"` |  |
@@ -24,7 +40,7 @@ A Kubernetes Helm Chart to discover orphaned resources using kor
 | cronJob.imagePullPolicy | string | `"Always"` |  |
 | cronJob.imagePullSecrets | list | `[]` |  |
 | cronJob.name | string | `"kor"` |  |
-| cronJob.namespaced | string | `nil` | Set true/false to explicitly return namespaced/non-namespaced resources |
+| cronJob.namespaced | string | `nil` | Set true/false to explicitly return namespaced/non-namespaced resources. Deprecated: use cronJob.config.namespaced instead |
 | cronJob.podSecurityContext | object | `{}` |  |
 | cronJob.restartPolicy | string | `"OnFailure"` |  |
 | cronJob.schedule | string | `"0 1 * * 1"` |  |
@@ -35,6 +51,22 @@ A Kubernetes Helm Chart to discover orphaned resources using kor
 | cronJob.successfulJobsHistoryLimit | int | `3` |  |
 | prometheusExporter.args[0] | string | `"exporter"` |  |
 | prometheusExporter.command[0] | string | `"kor"` |  |
+| prometheusExporter.config.clusterName | string | `""` | Cluster name shown in CLI output and Slack notifications |
+| prometheusExporter.config.excludeLabels | list | `[]` | Selector to filter out, Example: --exclude-labels key1=value1,key2=value2 |
+| prometheusExporter.config.excludeNamespaces | list | `[]` | Namespaces to be excluded, Example: --exclude-namespaces ns1,ns2,ns3 |
+| prometheusExporter.config.groupBy | string | `"namespace"` | Group output by (namespace, resource) |
+| prometheusExporter.config.ignoreOwnerReferences | bool | `false` | Skip resources that have ownerReferences set (for all resource types) |
+| prometheusExporter.config.includeLabels | string | `""` | Selector to filter in, Example: --include-labels key1=value1 |
+| prometheusExporter.config.includeNamespaces | list | `[]` | Namespaces to run on, Example: --include-namespaces ns1,ns2,ns3 |
+| prometheusExporter.config.kubeconfig | string | `""` | Path to kubeconfig file (optional) |
+| prometheusExporter.config.namespaced | string | `nil` | Set true/false to explicitly return namespaced/non-namespaced resources. If unset (null), both are returned |
+| prometheusExporter.config.newerThan | string | `""` | The maximum age of the resources to be considered unused. Example: --newer-than=1h2m |
+| prometheusExporter.config.noInteractive | bool | `false` | Do not prompt for confirmation when deleting resources |
+| prometheusExporter.config.olderThan | string | `""` | The minimum age of the resources to be considered unused. Example: --older-than=1h2m |
+| prometheusExporter.config.output | string | `"table"` | Output format (table, json or yaml) |
+| prometheusExporter.config.resources | list | `[]` | Comma-separated list of resources to monitor (e.g., deployment,service) |
+| prometheusExporter.config.showReason | bool | `false` | Print reason resource is considered unused |
+| prometheusExporter.config.verbose | bool | `false` | Verbose output (print empty namespaces) |
 | prometheusExporter.deployment.affinity | object | `{}` |  |
 | prometheusExporter.deployment.image.repository | string | `"yonahdissen/kor"` |  |
 | prometheusExporter.deployment.image.tag | string | `"latest"` |  |
@@ -50,7 +82,7 @@ A Kubernetes Helm Chart to discover orphaned resources using kor
 | prometheusExporter.enabled | bool | `true` |  |
 | prometheusExporter.exporterInterval | string | `""` |  |
 | prometheusExporter.name | string | `"kor-exporter"` |  |
-| prometheusExporter.namespaced | string | `nil` | Set true/false to explicitly return namespaced/non-namespaced resources |
+| prometheusExporter.namespaced | string | `nil` | Set true/false to explicitly return namespaced/non-namespaced resources. Deprecated: use prometheusExporter.config.namespaced instead |
 | prometheusExporter.service.port | int | `8080` |  |
 | prometheusExporter.service.type | string | `"ClusterIP"` |  |
 | prometheusExporter.serviceMonitor.enabled | bool | `true` |  |
