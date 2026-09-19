@@ -2,10 +2,15 @@ package kor
 
 import (
 	"os"
+	"reflect"
 	"sort"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/discovery"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/fake"
+	clienttesting "k8s.io/client-go/testing"
 )
 
 func stringSlicesEqual(a, b []string) bool {
@@ -253,14 +258,81 @@ func TestResourceExceptionWithRegexPrefixInNamespace(t *testing.T) {
 	}
 }
 
-func TestGetResourceKinds(t *testing.T) {
-	clientset := fake.NewClientset()
+type fakeDiscoveryWithResources struct {
+	*fakediscovery.FakeDiscovery
+	resources []*metav1.APIResourceList
+}
 
-	kinds, err := GetResourceKinds(clientset)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+func (d *fakeDiscoveryWithResources) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
+	return d.resources, nil
+}
+
+type fakeClientsetWithDiscovery struct {
+	*fake.Clientset
+	discovery.DiscoveryInterfaces
+}
+
+func (c *fakeClientsetWithDiscovery) Discovery() discovery.DiscoveryInterfaces {
+	return c.DiscoveryInterfaces
+}
+
+func TestGetResourceKinds(t *testing.T) {
+	tests := []struct {
+		name          string
+		resourceLists []*metav1.APIResourceList
+		expectedKinds map[string]ResourceKind
+	}{
+		{
+			name:          "empty discovery",
+			expectedKinds: map[string]ResourceKind{},
+		},
+		{
+			name: "resources with singular, plural and short names",
+			resourceLists: []*metav1.APIResourceList{
+				{
+					GroupVersion: "v1",
+					APIResources: []metav1.APIResource{
+						{Name: "configmaps", SingularName: "configmap", ShortNames: []string{"cm"}},
+						{Name: "pods", SingularName: "pod", ShortNames: []string{"po"}},
+						{Name: "services", SingularName: "", ShortNames: []string{"svc"}},
+					},
+				},
+				{
+					GroupVersion: "apps/v1",
+					APIResources: []metav1.APIResource{
+						{Name: "deployments", SingularName: "deployment", ShortNames: []string{"deploy"}},
+					},
+				},
+			},
+			expectedKinds: map[string]ResourceKind{
+				"configmap":  {Plural: "configmaps", ShortNames: []string{"cm"}},
+				"pod":        {Plural: "pods", ShortNames: []string{"po"}},
+				"services":   {Plural: "services", ShortNames: []string{"svc"}},
+				"deployment": {Plural: "deployments", ShortNames: []string{"deploy"}},
+			},
+		},
 	}
-	if len(kinds) != 0 {
-		t.Errorf("Expected no resource kinds, got %v", kinds)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fakeDisco := &fakediscovery.FakeDiscovery{
+				Fake: &clienttesting.Fake{Resources: test.resourceLists},
+			}
+			clientset := &fakeClientsetWithDiscovery{
+				Clientset: fake.NewClientset(),
+				DiscoveryInterfaces: &fakeDiscoveryWithResources{
+					FakeDiscovery: fakeDisco,
+					resources:     test.resourceLists,
+				},
+			}
+
+			kinds, err := GetResourceKinds(clientset)
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+			if !reflect.DeepEqual(kinds, test.expectedKinds) {
+				t.Errorf("Expected resource kinds %v, got %v", test.expectedKinds, kinds)
+			}
+		})
 	}
 }

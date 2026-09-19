@@ -36,7 +36,7 @@ func TestShouldSkipKubeInitialization(t *testing.T) {
 
 			got := shouldSkipKubeInitialization(cmd)
 			if got != c.expected {
-				t.Errorf("Expcected %v, got %v", c.expected, got)
+				t.Errorf("Expected %v, got %v", c.expected, got)
 			}
 		})
 	}
